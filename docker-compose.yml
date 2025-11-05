@@ -1,19 +1,6 @@
 version: "3.8"
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: bookscrawler_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   mongodb:
     image: mongo:7.0
     container_name: bookscrawler_mongodb
@@ -28,30 +15,20 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGODB_USERNAME:-admin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-admin123}
       - MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-bookscrawler}
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
-  mongo-express:
-    image: mongo-express:latest
-    container_name: bookscrawler_mongo_express
+  redis:
+    image: redis:7-alpine
+    container_name: bookscrawler_redis
     ports:
-      - "8081:8081"
-    env_file:
-      - .env
-    environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGODB_USERNAME:-admin}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGODB_PASSWORD:-admin123}
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/
-      - ME_CONFIG_BASICAUTH_USERNAME=${MONGODB_USERNAME:-admin}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGODB_PASSWORD:-admin123}
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    restart: unless-stopped
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   backend:
     build:
@@ -71,10 +48,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
     depends_on:
-      redis:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      - redis
+      - mongodb
     restart: unless-stopped
 
   celery_worker:
@@ -93,10 +68,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
     depends_on:
-      redis:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      - redis
+      - mongodb
     restart: unless-stopped
 
   celery_beat:
@@ -115,10 +88,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
     depends_on:
-      redis:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      - redis
+      - mongodb
     restart: unless-stopped
 
   flower:
