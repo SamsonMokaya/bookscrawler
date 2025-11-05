@@ -3,7 +3,7 @@ Pydantic schemas for API responses
 """
 from typing import List, Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class BookResponse(BaseModel):
@@ -22,8 +22,8 @@ class BookResponse(BaseModel):
     crawled_at: datetime
     updated_at: datetime
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "690b24fb9d8ccb72dea4ecfb",
                 "name": "A Light in the Attic",
@@ -40,6 +40,7 @@ class BookResponse(BaseModel):
                 "updated_at": "2025-11-05T10:20:41"
             }
         }
+    )
 
 
 class BooksListResponse(BaseModel):
@@ -50,8 +51,8 @@ class BooksListResponse(BaseModel):
     pages: int = Field(..., description="Total number of pages")
     books: List[BookResponse]
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total": 1000,
                 "page": 1,
@@ -60,6 +61,7 @@ class BooksListResponse(BaseModel):
                 "books": []
             }
         }
+    )
 
 
 class ChangeResponse(BaseModel):
@@ -73,8 +75,8 @@ class ChangeResponse(BaseModel):
     new_value: Optional[Any] = None
     changed_at: datetime
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "690b24fb9d8ccb72dea4ed00",
                 "book_id": "690b24fb9d8ccb72dea4ecfb",
@@ -86,6 +88,7 @@ class ChangeResponse(BaseModel):
                 "changed_at": "2025-11-05T10:33:24"
             }
         }
+    )
 
 
 class ChangesListResponse(BaseModel):
@@ -113,8 +116,8 @@ class StatsResponse(BaseModel):
     categories: dict
     price_range: dict
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total_books": 1000,
                 "last_crawl": "2025-11-05T10:30:46",
@@ -123,16 +126,18 @@ class StatsResponse(BaseModel):
                 "price_range": {"min": 10.00, "max": 99.99, "avg": 45.50}
             }
         }
+    )
 
 
 class ErrorResponse(BaseModel):
     """Standard error response"""
     detail: str
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "detail": "Invalid or missing API key"
             }
         }
+    )
 

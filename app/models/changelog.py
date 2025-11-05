@@ -24,16 +24,17 @@ class ChangeLog(Document):
     
     # Change information
     changed_at: Indexed(datetime) = Field(default_factory=datetime.utcnow)  # When change occurred
-    field_changed: str  # Which field changed (e.g., 'price_incl_tax', 'availability')
+    field_changed: Optional[str] = None  # Which field changed (e.g., 'price_incl_tax', 'availability')
     
     # Old and new values
     old_value: Optional[Any] = None  # Previous value
     new_value: Optional[Any] = None  # New value
     
     # Change classification
-    change_type: Indexed(str)  # 'update', 'new', 'deleted'
+    change_type: Indexed(str)  # 'update', 'new_book', 'deleted'
     
-    # Optional: Source information
+    # Optional: Additional information
+    description: Optional[str] = None  # Human-readable description of the change
     source_url: Optional[str] = None  # URL of the book
     
     class Settings:

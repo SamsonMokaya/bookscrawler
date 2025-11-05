@@ -97,7 +97,7 @@ async def health_check():
     try:
         db_client = get_db_client()
         if db_client:
-            await db_client[settings.MONGODB_DB_NAME].command("ping")
+            await db_client[settings.mongodb_database_name].command("ping")
             health_status["mongodb"] = "connected"
         else:
             health_status["mongodb"] = "not_initialized"

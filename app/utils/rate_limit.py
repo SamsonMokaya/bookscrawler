@@ -10,11 +10,30 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Create Redis client
-redis_client = Redis.from_url(
-    settings.REDIS_URL,
-    decode_responses=True
-)
+# Redis client instance (created lazily)
+_redis_client = None
+
+
+def get_redis_client() -> Redis:
+    """Get or create Redis client (lazy initialization)"""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = Redis.from_url(
+            settings.redis_url,  # Uses property for test/prod switching
+            decode_responses=True
+        )
+    return _redis_client
+
+
+def reset_redis_client():
+    """Reset Redis client (for testing)"""
+    global _redis_client
+    if _redis_client:
+        try:
+            _redis_client.close()
+        except:
+            pass
+    _redis_client = None
 
 
 async def check_rate_limit(api_key: str, response: Response) -> None:
@@ -29,15 +48,17 @@ async def check_rate_limit(api_key: str, response: Response) -> None:
         HTTPException: If rate limit exceeded
     """
     try:
+        redis = get_redis_client()
+        
         # Create Redis key for this API key
         redis_key = f"rate_limit:{api_key}"
         
         # Get current count
-        current_count = redis_client.get(redis_key)
+        current_count = redis.get(redis_key)
         
         if current_count is None:
             # First request in this window
-            redis_client.setex(
+            redis.setex(
                 redis_key,
                 settings.RATE_LIMIT_WINDOW,  # seconds
                 1
@@ -49,7 +70,7 @@ async def check_rate_limit(api_key: str, response: Response) -> None:
             
             if current_count >= settings.RATE_LIMIT_REQUESTS:
                 # Rate limit exceeded
-                ttl = redis_client.ttl(redis_key)
+                ttl = redis.ttl(redis_key)
                 reset_time = int(time.time()) + ttl
                 
                 logger.warning(f"Rate limit exceeded for API key: {api_key[:8]}...")
@@ -71,9 +92,9 @@ async def check_rate_limit(api_key: str, response: Response) -> None:
                 )
             
             # Increment counter
-            redis_client.incr(redis_key)
+            redis.incr(redis_key)
             remaining = settings.RATE_LIMIT_REQUESTS - current_count - 1
-            ttl = redis_client.ttl(redis_key)
+            ttl = redis.ttl(redis_key)
         
         # Add rate limit headers to response
         reset_time = int(time.time()) + ttl
@@ -102,8 +123,9 @@ def reset_rate_limit(api_key: str) -> bool:
         True if reset successful
     """
     try:
+        redis = get_redis_client()
         redis_key = f"rate_limit:{api_key}"
-        redis_client.delete(redis_key)
+        redis.delete(redis_key)
         logger.info(f"Rate limit reset for API key: {api_key[:8]}...")
         return True
     except Exception as e:
@@ -122,8 +144,9 @@ def get_rate_limit_status(api_key: str) -> dict:
         Dictionary with limit, remaining, and reset time
     """
     try:
+        redis = get_redis_client()
         redis_key = f"rate_limit:{api_key}"
-        current_count = redis_client.get(redis_key)
+        current_count = redis.get(redis_key)
         
         if current_count is None:
             return {
@@ -133,7 +156,7 @@ def get_rate_limit_status(api_key: str) -> dict:
             }
         
         current_count = int(current_count)
-        ttl = redis_client.ttl(redis_key)
+        ttl = redis.ttl(redis_key)
         remaining = max(0, settings.RATE_LIMIT_REQUESTS - current_count)
         
         return {

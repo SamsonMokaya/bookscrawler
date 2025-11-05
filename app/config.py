@@ -10,9 +10,19 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
+    TESTING: bool = False  # Set to True in tests
     
     # Redis Settings
     REDIS_URL: str = "redis://localhost:6379/0"
+    TEST_REDIS_DB: int = 1  # Use Redis DB 1 for tests
+    
+    @property
+    def redis_url(self) -> str:
+        """Return test Redis URL when testing, otherwise production Redis URL"""
+        if self.TESTING:
+            # Replace /0 with /1 for testing
+            return self.REDIS_URL.rsplit('/', 1)[0] + f'/{self.TEST_REDIS_DB}'
+        return self.REDIS_URL
     
     # Celery Settings
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
@@ -25,6 +35,14 @@ class Settings(BaseSettings):
     MONGODB_PASSWORD: str = "admin123"
     MONGODB_DB_NAME: str = "bookscrawler"
     MONGODB_URL: str = "mongodb://admin:admin123@localhost:27017/bookscrawler?authSource=admin"
+    
+    # Test Database (used when TESTING=true)
+    TEST_MONGODB_DB_NAME: str = "bookscrawler_test"
+    
+    @property
+    def mongodb_database_name(self) -> str:
+        """Return test database name when testing, otherwise production database"""
+        return self.TEST_MONGODB_DB_NAME if self.TESTING else self.MONGODB_DB_NAME
     
     # API Security Settings
     API_KEY_NAME: str = "X-API-Key"

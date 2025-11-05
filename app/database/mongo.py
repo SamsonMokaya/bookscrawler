@@ -29,8 +29,8 @@ async def init_db():
         # Create Motor client
         _mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
         
-        # Get database
-        database = _mongodb_client[settings.MONGODB_DB_NAME]
+        # Get database (uses test DB if TESTING=true)
+        database = _mongodb_client[settings.mongodb_database_name]
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -38,7 +38,7 @@ async def init_db():
             document_models=[Book, ChangeLog]
         )
         
-        logger.info(f"Successfully connected to MongoDB database: {settings.MONGODB_DB_NAME}")
+        logger.info(f"Successfully connected to MongoDB database: {settings.mongodb_database_name}")
         logger.info("Beanie ODM initialized with models: Book, ChangeLog")
         
         # Test connection
