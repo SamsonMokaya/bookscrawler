@@ -53,54 +53,66 @@ async def check_rate_limit(api_key: str, response: Response) -> None:
         # Create Redis key for this API key
         redis_key = f"rate_limit:{api_key}"
         
-        # Get current count
-        current_count = redis.get(redis_key)
+        # Atomic rate limit check using Lua script
+        # This ensures check-and-increment is atomic (prevents race conditions)
+        lua_script = """
+        local key = KEYS[1]
+        local limit = tonumber(ARGV[1])
+        local window = tonumber(ARGV[2])
         
-        if current_count is None:
-            # First request in this window
-            redis.setex(
-                redis_key,
-                settings.RATE_LIMIT_WINDOW,  # seconds
-                1
-            )
-            remaining = settings.RATE_LIMIT_REQUESTS - 1
-            ttl = settings.RATE_LIMIT_WINDOW
-        else:
-            current_count = int(current_count)
-            
-            if current_count >= settings.RATE_LIMIT_REQUESTS:
-                # Rate limit exceeded
-                ttl = redis.ttl(redis_key)
-                reset_time = int(time.time()) + ttl
-                
-                logger.warning(f"Rate limit exceeded for API key: {api_key[:8]}...")
-                
-                # Add rate limit headers
-                response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_REQUESTS)
-                response.headers["X-RateLimit-Remaining"] = "0"
-                response.headers["X-RateLimit-Reset"] = str(reset_time)
-                
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Rate limit exceeded. Try again in {ttl} seconds.",
-                    headers={
-                        "Retry-After": str(ttl),
-                        "X-RateLimit-Limit": str(settings.RATE_LIMIT_REQUESTS),
-                        "X-RateLimit-Remaining": "0",
-                        "X-RateLimit-Reset": str(reset_time)
-                    }
-                )
-            
-            # Increment counter
-            redis.incr(redis_key)
-            remaining = settings.RATE_LIMIT_REQUESTS - current_count - 1
-            ttl = redis.ttl(redis_key)
+        local current = redis.call('GET', key)
         
-        # Add rate limit headers to response
-        reset_time = int(time.time()) + ttl
+        -- Check if limit exceeded
+        if current and tonumber(current) >= limit then
+            local ttl = redis.call('TTL', key)
+            return {tonumber(current), ttl, 0}
+        end
+        
+        -- Increment counter
+        local count = redis.call('INCR', key)
+        
+        -- Set expiry on first request
+        if count == 1 then
+            redis.call('EXPIRE', key, window)
+        end
+        
+        local ttl = redis.call('TTL', key)
+        return {count, ttl, 1}
+        """
+        
+        # Execute atomic operation
+        result = redis.eval(
+            lua_script,
+            1,  # Number of keys
+            redis_key,
+            settings.RATE_LIMIT_REQUESTS,
+            settings.RATE_LIMIT_WINDOW
+        )
+        
+        current_count, ttl, allowed = result
+        
+        # Calculate remaining requests
+        remaining = max(0, settings.RATE_LIMIT_REQUESTS - current_count)
+        reset_time = int(time.time()) + (ttl if ttl > 0 else settings.RATE_LIMIT_WINDOW)
+        
+        # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_REQUESTS)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(reset_time)
+        
+        # Check if request was allowed
+        if not allowed:
+            logger.warning(f"Rate limit exceeded for API key: {api_key[:8]}...")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded. Try again in {ttl} seconds.",
+                headers={
+                    "Retry-After": str(ttl),
+                    "X-RateLimit-Limit": str(settings.RATE_LIMIT_REQUESTS),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset_time)
+                }
+            )
         
         logger.debug(f"Rate limit check passed: {remaining}/{settings.RATE_LIMIT_REQUESTS} remaining")
         

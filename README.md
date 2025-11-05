@@ -160,6 +160,120 @@ curl -H "X-API-Key: dev-key-001" \
   http://localhost:8000/changes/books/690b24fb9d8ccb72dea4ecfb/history
 ```
 
+#### 5. GET /reports/changes/daily - Daily Change Report
+
+Get a daily report of all changes in JSON or CSV format:
+
+**JSON Report:**
+
+```bash
+# Get today's changes
+curl -H "X-API-Key: dev-key-001" \
+  "http://localhost:8000/reports/changes/daily"
+
+# Get specific date
+curl -H "X-API-Key: dev-key-001" \
+  "http://localhost:8000/reports/changes/daily?date=2025-11-05"
+```
+
+**CSV Download:**
+
+```bash
+# Save CSV to file
+curl -H "X-API-Key: dev-key-001" \
+  "http://localhost:8000/reports/changes/daily?format=csv" \
+  -o daily_changes.csv
+
+# Then open in Excel/Sheets:
+open daily_changes.csv
+```
+
+**Query Parameters:**
+
+- `date` - Date in YYYY-MM-DD format (default: today)
+- `format` - `json` (default) or `csv`
+
+**JSON Response Example:**
+
+```json
+{
+  "date": "2025-11-05",
+  "summary": {
+    "total_changes": 150,
+    "new_books": 5,
+    "updates": 145,
+    "fields_changed": {
+      "price_incl_tax": 80,
+      "availability": 45
+    }
+  },
+  "changes": [
+    {
+      "book_name": "Sample Book",
+      "change_type": "update",
+      "field_changed": "price_incl_tax",
+      "old_value": "19.99",
+      "new_value": "24.99",
+      "description": "Price increased by £5.00"
+    }
+  ]
+}
+```
+
+**CSV Output:**
+
+```
+Timestamp,Book Name,Change Type,Field Changed,Old Value,New Value,Description
+2025-11-05 10:30:00,Sample Book,update,price_incl_tax,19.99,24.99,Price increased by £5.00
+```
+
+#### 6. GET /reports/summary/daily - Multi-Day Summary
+
+Get statistics for the past N days:
+
+```bash
+# Last 7 days (default)
+curl -H "X-API-Key: dev-key-001" \
+  "http://localhost:8000/reports/summary/daily"
+
+# Last 30 days
+curl -H "X-API-Key: dev-key-001" \
+  "http://localhost:8000/reports/summary/daily?days=30"
+```
+
+**Query Parameters:**
+
+- `days` - Number of days (1-90, default: 7)
+
+**Response:**
+
+```json
+{
+  "period": {
+    "start_date": "2025-10-29",
+    "end_date": "2025-11-05",
+    "days": 7
+  },
+  "totals": {
+    "total_changes": 1050,
+    "total_new_books": 25,
+    "total_updates": 1025
+  },
+  "daily_breakdown": [
+    {
+      "date": "2025-11-05",
+      "total_changes": 150,
+      "new_books": 5,
+      "updates": 145
+    }
+  ],
+  "most_changed_fields": {
+    "price_incl_tax": 500,
+    "availability": 300
+  }
+}
+```
+
 ### Rate Limiting
 
 Every response includes:

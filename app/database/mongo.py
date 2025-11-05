@@ -24,7 +24,7 @@ async def init_db():
     global _mongodb_client
     
     try:
-        logger.info(f"Connecting to MongoDB at: {settings.MONGODB_URL}")
+        logger.info(f"Connecting to MongoDB")
         
         # Create Motor client
         _mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)

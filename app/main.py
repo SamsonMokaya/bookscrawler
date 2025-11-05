@@ -5,13 +5,27 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.celery_app import celery_app
 from app.database.mongo import init_db, close_db, get_db_client
-from app.api import books, changes
+from app.api import books, changes, reports
 import logging
+
+# Configure logging with file and console handlers
+import os
+from pathlib import Path
+
+# Ensure logs directory exists
+log_dir = Path(settings.LOG_FILE).parent
+log_dir.mkdir(parents=True, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        # File handler (persistent logs)
+        logging.FileHandler(settings.LOG_FILE),
+        # Console handler (Docker logs)
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -53,6 +67,7 @@ app = FastAPI(
 # Include API routers
 app.include_router(books.router)
 app.include_router(changes.router)
+app.include_router(reports.router)
 
 
 @app.get("/")
