@@ -72,76 +72,32 @@ async def get_changes(
         skip = (page - 1) * limit
         total_pages = math.ceil(total / limit) if total > 0 else 1
         
-        # Get ALL changes matching filter (we'll group then paginate)
-        all_changes = await ChangeLog.find(query_filter).sort('-changed_at').to_list()
+        # Fetch changes with pagination (most recent first)
+        changes = await ChangeLog.find(query_filter).sort('-changed_at').skip(skip).limit(limit).to_list()
         
-        # Group changes by timestamp and book
-        from collections import defaultdict
-        
-        # First group by timestamp (to second precision)
-        events_by_time = defaultdict(list)
-        for change in all_changes:
-            timestamp_key = change.changed_at.replace(microsecond=0).isoformat()
-            events_by_time[timestamp_key].append(change)
-        
-        # Build grouped events
-        grouped_events = []
-        for timestamp, changes_at_time in sorted(events_by_time.items(), reverse=True):
-            # Group by book within this timestamp
-            books_affected = defaultdict(list)
-            for change in changes_at_time:
-                books_affected[change.book_id].append(change)
-            
-            # Build book entries
-            book_entries = []
-            for book_id, book_changes in books_affected.items():
-                change_type = book_changes[0].change_type
-                book_name = book_changes[0].book_name
-                
-                # Build field changes
-                field_changes = []
-                for change in book_changes:
-                    if change.change_type != 'new_book':
-                        field_changes.append({
-                            "field": change.field_changed,
-                            "old_value": change.old_value,
-                            "new_value": change.new_value,
-                            "description": change.description
-                        })
-                
-                book_entries.append({
-                    "book_id": book_id,
-                    "book_name": book_name,
-                    "change_type": change_type,
-                    "total_fields_changed": len(field_changes),
-                    "fields": field_changes,
-                    "summary": ", ".join([f["field"] for f in field_changes]) if field_changes else "New book added"
-                })
-            
-            grouped_events.append({
-                "changed_at": timestamp,
-                "total_books_affected": len(book_entries),
-                "total_fields_changed": sum(len(b["fields"]) for b in book_entries),
-                "books": book_entries
+        # Convert to response format
+        change_responses = []
+        for change in changes:
+            change_responses.append({
+                "id": str(change.id),
+                "book_id": change.book_id,
+                "book_name": change.book_name,
+                "change_type": change.change_type,
+                "field_changed": change.field_changed,
+                "old_value": change.old_value,
+                "new_value": change.new_value,
+                "description": change.description,
+                "changed_at": change.changed_at
             })
         
-        # Apply pagination to grouped events
-        total_events = len(grouped_events)
-        total_pages = math.ceil(total_events / limit) if total_events > 0 else 1
-        
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_events = grouped_events[start_idx:end_idx]
-        
-        logger.info(f"Returned {total} total changes ({total_events} events, page {page}/{total_pages})")
+        logger.info(f"Returned {len(change_responses)} changes (page {page}/{total_pages})")
         
         return {
-            "total_changes": total,
-            "total_events": total_events,
+            "total": total,
             "page": page,
             "limit": limit,
             "pages": total_pages,
-            "events": paginated_events
+            "changes": change_responses
         }
         
     except Exception as e:

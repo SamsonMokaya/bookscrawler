@@ -66,13 +66,11 @@ async def save_book_to_db(book_data: Dict) -> Dict[str, any]:
                             field = change.get('field_changed')
                             old_val = change.get('old_value')
                             new_val = change.get('new_value')
-                            change_summary.append(f"{field}: {old_val} → {new_val}")
+                            change_summary.append(f"{field}: {old_val} -> {new_val}")
                         
                         logger.warning(f"CHANGE DETECTED: '{book_data['name']}' - {', '.join(change_summary)}")
                         logger.info(f"Updated book: {book_data['name']} with {changes_saved} changes logged")
-                    else:
-                        logger.info(f"Updated book: {book_data['name']} (no changes detected)")
-                    
+                   
                     # Transaction commits automatically here
                     return {
                         'status': 'updated',
@@ -96,7 +94,7 @@ async def save_book_to_db(book_data: Dict) -> Dict[str, any]:
                     await new_book_log.insert(session=session)
                     
                     # Enhanced logging for new books
-                    logger.warning(f"📚 NEW BOOK DETECTED: '{book_data['name']}' in category '{book_data['category']}' - £{book_data['price_incl_tax']}")
+                    logger.warning(f"NEW BOOK DETECTED: '{book_data['name']}' in category '{book_data['category']}' - £{book_data['price_incl_tax']}")
                     logger.info(f"Inserted new book: {book_data['name']}")
                     
                     # Transaction commits automatically here

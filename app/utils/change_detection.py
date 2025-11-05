@@ -50,7 +50,7 @@ async def detect_changes(old_book: Book, new_book_data: Dict) -> List[Dict]:
     return changes
 
 
-async def save_changes_to_log(changes: List[Dict]) -> int:
+async def save_changes_to_log(changes: List[Dict], session=None) -> int:
     """
     Save detected changes to ChangeLog collection
     
@@ -68,8 +68,11 @@ async def save_changes_to_log(changes: List[Dict]) -> int:
         # Create ChangeLog documents
         changelogs = [ChangeLog(**change) for change in changes]
         
-        # Bulk insert
-        await ChangeLog.insert_many(changelogs)
+        # Bulk insert (with optional session for transaction support)
+        if session:
+            await ChangeLog.insert_many(changelogs, session=session)
+        else:
+            await ChangeLog.insert_many(changelogs)
         
         logger.info(f"Saved {len(changelogs)} changes to ChangeLog")
         return len(changelogs)
