@@ -108,7 +108,7 @@ async def get_changes(
         )
 
 
-@router.get("/books/{book_id}/history", response_model=BookHistoryResponse)
+@router.get("/books/{book_id}/history")
 async def get_book_history(
     book_id: str = Path(..., description="Book ID"),
     api_key: APIKey = None
@@ -139,29 +139,52 @@ async def get_book_history(
             ChangeLog.book_id == book_id
         ).sort('-changed_at').to_list()
         
-        # Convert to response model
-        change_responses = [
-            ChangeResponse(
-                id=str(change.id),
-                book_id=change.book_id,
-                book_name=change.book_name,
-                change_type=change.change_type,
-                field_changed=change.field_changed,
-                old_value=change.old_value,
-                new_value=change.new_value,
-                changed_at=change.changed_at
-            )
-            for change in changes
-        ]
+        # Group changes by timestamp (same crawl = same second)
+        from collections import defaultdict
+        grouped_changes = defaultdict(list)
         
-        logger.info(f"Returned {len(change_responses)} changes for book: {book.name}")
+        for change in changes:
+            # Round to second for grouping (changes in same crawl)
+            timestamp_key = change.changed_at.replace(microsecond=0).isoformat()
+            grouped_changes[timestamp_key].append(change)
         
-        return BookHistoryResponse(
-            book_id=book_id,
-            book_name=book.name,
-            total_changes=len(change_responses),
-            changes=change_responses
-        )
+        # Build grouped response
+        grouped_response = []
+        for timestamp, change_group in sorted(grouped_changes.items(), reverse=True):
+            # Build field changes for this timestamp
+            field_changes = []
+            change_type = change_group[0].change_type
+            
+            for change in change_group:
+                if change.change_type == 'new_book':
+                    # New book entry (no field changes)
+                    pass
+                else:
+                    field_changes.append({
+                        "field": change.field_changed,
+                        "old_value": change.old_value,
+                        "new_value": change.new_value,
+                        "description": change.description
+                    })
+            
+            grouped_entry = {
+                "changed_at": timestamp,
+                "change_type": change_type,
+                "total_fields_changed": len(field_changes),
+                "fields": field_changes,
+                "summary": ", ".join([f["field"] for f in field_changes]) if field_changes else "New book added"
+            }
+            grouped_response.append(grouped_entry)
+        
+        logger.info(f"Returned {len(changes)} total changes ({len(grouped_response)} events) for book: {book.name}")
+        
+        return {
+            "book_id": book_id,
+            "book_name": book.name,
+            "total_changes": len(changes),
+            "total_events": len(grouped_response),
+            "changes": grouped_response
+        }
         
     except HTTPException:
         raise
