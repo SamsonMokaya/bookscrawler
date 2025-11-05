@@ -227,53 +227,6 @@ Timestamp,Book Name,Change Type,Field Changed,Old Value,New Value,Description
 2025-11-05 10:30:00,Sample Book,update,price_incl_tax,19.99,24.99,Price increased by £5.00
 ```
 
-#### 6. GET /reports/summary/daily - Multi-Day Summary
-
-Get statistics for the past N days:
-
-```bash
-# Last 7 days (default)
-curl -H "X-API-Key: dev-key-001" \
-  "http://localhost:8000/reports/summary/daily"
-
-# Last 30 days
-curl -H "X-API-Key: dev-key-001" \
-  "http://localhost:8000/reports/summary/daily?days=30"
-```
-
-**Query Parameters:**
-
-- `days` - Number of days (1-90, default: 7)
-
-**Response:**
-
-```json
-{
-  "period": {
-    "start_date": "2025-10-29",
-    "end_date": "2025-11-05",
-    "days": 7
-  },
-  "totals": {
-    "total_changes": 1050,
-    "total_new_books": 25,
-    "total_updates": 1025
-  },
-  "daily_breakdown": [
-    {
-      "date": "2025-11-05",
-      "total_changes": 150,
-      "new_books": 5,
-      "updates": 145
-    }
-  ],
-  "most_changed_fields": {
-    "price_incl_tax": 500,
-    "availability": 300
-  }
-}
-```
-
 ### Rate Limiting
 
 Every response includes:
