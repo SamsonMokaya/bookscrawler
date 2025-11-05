@@ -28,10 +28,23 @@ class Settings(BaseSettings):
     
     # API Security Settings
     API_KEY_NAME: str = "X-API-Key"
-    API_KEY: str = "your-secret-api-key-change-in-production"
+    API_KEYS: str = "dev-key-001,dev-key-002,dev-key-003,admin-key-999"
+    BLOCKED_API_KEYS: str = ""
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    @property
+    def valid_api_keys(self) -> list:
+        """Parse comma-separated API keys into list"""
+        return [key.strip() for key in self.API_KEYS.split(',') if key.strip()]
+    
+    @property
+    def blocked_api_keys(self) -> list:
+        """Parse comma-separated blocked API keys into list"""
+        if not self.BLOCKED_API_KEYS:
+            return []
+        return [key.strip() for key in self.BLOCKED_API_KEYS.split(',') if key.strip()]
     
     # Rate Limiting Settings
     RATE_LIMIT_REQUESTS: int = 100
