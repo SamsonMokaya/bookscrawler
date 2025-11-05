@@ -111,16 +111,24 @@ async def get_changes(
 @router.get("/books/{book_id}/history")
 async def get_book_history(
     book_id: str = Path(..., description="Book ID"),
-    api_key: APIKey = None
+    api_key: APIKey = None,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(50, ge=1, le=200, description="Events per page (max 200)")
 ):
     """
-    Get complete change history for a specific book
+    Get complete change history for a specific book (grouped by event)
     
     **Path Parameters:**
     - `book_id`: The unique identifier of the book
     
+    **Query Parameters:**
+    - `page`: Page number (starts at 1)
+    - `limit`: Number of events per page (1-200, default: 50)
+    
     **Returns:**
-    - Complete change history for the book, sorted by most recent first
+    - Change history grouped by event (same timestamp = same event)
+    - Each event shows all fields that changed together
+    - Sorted by most recent first
     
     **Errors:**
     - 404: Book not found
@@ -176,14 +184,26 @@ async def get_book_history(
             }
             grouped_response.append(grouped_entry)
         
-        logger.info(f"Returned {len(changes)} total changes ({len(grouped_response)} events) for book: {book.name}")
+        # Apply pagination to grouped events
+        total_events = len(grouped_response)
+        total_pages = (total_events + limit - 1) // limit
+        
+        # Calculate pagination
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_events = grouped_response[start_idx:end_idx]
+        
+        logger.info(f"Returned {len(changes)} total changes ({total_events} events, page {page}/{total_pages}) for book: {book.name}")
         
         return {
             "book_id": book_id,
             "book_name": book.name,
             "total_changes": len(changes),
-            "total_events": len(grouped_response),
-            "changes": grouped_response
+            "total_events": total_events,
+            "page": page,
+            "limit": limit,
+            "pages": total_pages,
+            "changes": paginated_events
         }
         
     except HTTPException:
