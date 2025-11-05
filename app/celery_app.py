@@ -7,7 +7,7 @@ celery_app = Celery(
     "bookscrawler",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=['app.tasks']
+    include=['app.tasks', 'app.scheduler.crawl_tasks']
 )
 
 # Configure Celery
@@ -20,22 +20,26 @@ celery_app.conf.update(
 )
 
 # Configure Celery Beat schedule
-celery_app.conf.beat_schedule = {
-    # Example scheduled task - runs every 2 minutes
-    'test-task-every-2-minutes': {
-        'task': 'app.tasks.test_task',
-        'schedule': 120.0,  # Every 120 seconds (2 minutes)
-    },
-    # You can also use crontab for more complex schedules:
-    # 'daily-task-example': {
-    #     'task': 'app.tasks.some_task',
-    #     'schedule': crontab(hour=2, minute=0),  # Every day at 2:00 AM
-    # },
-    # 'hourly-task-example': {
-    #     'task': 'app.tasks.another_task',
-    #     'schedule': crontab(minute=0),  # Every hour at minute 0
-    # },
-}
+celery_app.conf.beat_schedule = {}
+
+# Only configure scheduled crawls if enabled
+if settings.ENABLE_SCHEDULER:
+    celery_app.conf.beat_schedule['daily-crawl-all-books'] = {
+        'task': 'crawl_all_books',
+        'schedule': crontab(
+            hour=settings.CRAWL_SCHEDULE_HOUR,
+            minute=settings.CRAWL_SCHEDULE_MINUTE
+        ),
+        'args': (1, None),  # Crawl all pages (1 to end)
+        'options': {'expires': 3600 * 12}  # Task expires after 12 hours
+    }
+    
+# Optional: Add test task for development/debugging
+# Uncomment to enable:
+# celery_app.conf.beat_schedule['test-task-every-5-minutes'] = {
+#     'task': 'app.tasks.test_task',
+#     'schedule': 300.0,  # Every 5 minutes
+# }
 
 if __name__ == '__main__':
     celery_app.start()

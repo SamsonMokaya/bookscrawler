@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.celery_app import celery_app
 from app.database.mongo import init_db, close_db, get_db_client
+from app.api import books, changes
 import logging
 
 # Configure logging
@@ -48,6 +49,10 @@ app = FastAPI(
     description="A production-ready book scraping API with Celery and MongoDB",
     lifespan=lifespan
 )
+
+# Include API routers
+app.include_router(books.router)
+app.include_router(changes.router)
 
 
 @app.get("/")
