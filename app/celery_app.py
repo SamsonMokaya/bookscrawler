@@ -21,18 +21,20 @@ celery_app.conf.update(
 
 # Configure Celery Beat schedule
 celery_app.conf.beat_schedule = {
-    'scrape-books-every-hour': {
-        'task': 'app.tasks.scheduled_book_scrape',
-        'schedule': crontab(minute=0),  # Every hour at minute 0
+    # Example scheduled task - runs every 2 minutes
+    'test-task-every-2-minutes': {
+        'task': 'app.tasks.test_task',
+        'schedule': 120.0,  # Every 120 seconds (2 minutes)
     },
-    'cleanup-old-data-daily': {
-        'task': 'app.tasks.cleanup_old_data',
-        'schedule': crontab(hour=2, minute=0),  # Every day at 2:00 AM
-    },
-    'health-check-every-5-minutes': {
-        'task': 'app.tasks.health_check',
-        'schedule': 300.0,  # Every 5 minutes (in seconds)
-    },
+    # You can also use crontab for more complex schedules:
+    # 'daily-task-example': {
+    #     'task': 'app.tasks.some_task',
+    #     'schedule': crontab(hour=2, minute=0),  # Every day at 2:00 AM
+    # },
+    # 'hourly-task-example': {
+    #     'task': 'app.tasks.another_task',
+    #     'schedule': crontab(minute=0),  # Every hour at minute 0
+    # },
 }
 
 if __name__ == '__main__':
