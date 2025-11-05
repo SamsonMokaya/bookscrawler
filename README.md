@@ -111,9 +111,11 @@ All dependencies are in `requirements.txt`.
 
 ## API Documentation
 
+**Interactive Swagger Docs:** http://localhost:8000/docs
+
 ### Authentication
 
-All endpoints require API key in header:
+All endpoints require API key:
 
 ```bash
 X-API-Key: dev-key-001
@@ -121,41 +123,16 @@ X-API-Key: dev-key-001
 
 ### Core Endpoints
 
-#### 1. GET /books - List Books
+- `GET /books` - List books (filters: category, price, rating, search; sorting, pagination)
+- `GET /books/{id}` - Single book details
+- `GET /changes` - Change history (filters: book_id, change_type, field, dates; pagination)
+- `GET /reports/changes/daily` - Daily CSV/JSON reports
 
-```bash
-curl -H "X-API-Key: dev-key-001" \
-  "http://localhost:8000/books?category=Poetry&rating=5&limit=10"
-```
+**See full interactive documentation at:** http://localhost:8000/docs
 
-**Query Parameters:**
+### Daily Reports (CSV/JSON Download)
 
-- `category`, `min_price`, `max_price`, `rating`, `availability`, `search`
-- `sort_by` (price_incl_tax, rating, name), `order` (asc, desc)
-- `page`, `limit` (max 100)
-
-#### 2. GET /books/{id} - Single Book
-
-```bash
-curl -H "X-API-Key: dev-key-001" \
-  http://localhost:8000/books/690b24fb9d8ccb72dea4ecfb
-```
-
-#### 3. GET /changes - Change History
-
-```bash
-curl -H "X-API-Key: dev-key-001" \
-  "http://localhost:8000/changes?field_changed=price_incl_tax&limit=20"
-```
-
-**Query Parameters:**
-
-- `book_id`, `change_type`, `field_changed`, `start_date`, `end_date`
-- `page`, `limit` (max 200)
-
-#### 4. GET /reports/changes/daily - Daily Change Report
-
-Get a daily report of all changes in JSON or CSV format:
+Generate daily change reports in JSON or CSV format:
 
 **JSON Report:**
 
