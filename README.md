@@ -153,14 +153,7 @@ curl -H "X-API-Key: dev-key-001" \
 - `book_id`, `change_type`, `field_changed`, `start_date`, `end_date`
 - `page`, `limit` (max 200)
 
-#### 4. GET /changes/books/{id}/history - Book History
-
-```bash
-curl -H "X-API-Key: dev-key-001" \
-  http://localhost:8000/changes/books/690b24fb9d8ccb72dea4ecfb/history
-```
-
-#### 5. GET /reports/changes/daily - Daily Change Report
+#### 4. GET /reports/changes/daily - Daily Change Report
 
 Get a daily report of all changes in JSON or CSV format:
 

@@ -212,11 +212,11 @@ class TestChangesEndpointsAsync:
         
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 0
-        assert data["changes"] == []
+        assert data["total_changes"] == 0
+        assert data["events"] == []
     
     async def test_get_changes_with_data(self, sample_changelog):
-        """Test GET /changes with sample changelog"""
+        """Test GET /changes with sample changelog (grouped format)"""
         async with httpx.AsyncClient(app=app, base_url="http://test") as client:
             response = await client.get(
                 "/changes",
@@ -225,12 +225,14 @@ class TestChangesEndpointsAsync:
         
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 1
-        assert len(data["changes"]) == 1
-        assert data["changes"][0]["field_changed"] == "price_incl_tax"
+        assert data["total_changes"] == 1
+        assert len(data["events"]) == 1
+        # Check grouped format
+        assert len(data["events"][0]["books"]) >= 1
+        assert data["events"][0]["books"][0]["fields"][0]["field"] == "price_incl_tax"
     
     async def test_filter_changes_by_type(self, sample_changelog):
-        """Test filtering changes by type"""
+        """Test filtering changes by type (grouped format)"""
         async with httpx.AsyncClient(app=app, base_url="http://test") as client:
             response = await client.get(
                 "/changes?change_type=update",
@@ -239,10 +241,13 @@ class TestChangesEndpointsAsync:
         
         assert response.status_code == 200
         data = response.json()
-        assert all(c["change_type"] == "update" for c in data["changes"])
+        # Check all books in all events have the correct change_type
+        for event in data["events"]:
+            for book in event["books"]:
+                assert book["change_type"] == "update"
     
     async def test_filter_changes_by_field(self, sample_changelog):
-        """Test filtering changes by field"""
+        """Test filtering changes by field (grouped format)"""
         async with httpx.AsyncClient(app=app, base_url="http://test") as client:
             response = await client.get(
                 "/changes?field_changed=price_incl_tax",
@@ -251,23 +256,11 @@ class TestChangesEndpointsAsync:
         
         assert response.status_code == 200
         data = response.json()
-        assert all(c["field_changed"] == "price_incl_tax" for c in data["changes"])
-    
-    async def test_get_book_history(self, sample_book, sample_changelog):
-        """Test GET /changes/books/{id}/history"""
-        book_id = str(sample_book.id)
-        
-        async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.get(
-                f"/changes/books/{book_id}/history",
-                headers={"X-API-Key": "dev-key-001"}
-            )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["book_id"] == book_id
-        assert data["book_name"] == sample_book.name
-        assert data["total_changes"] == 1
+        # Check all fields in all books in all events match the filter
+        for event in data["events"]:
+            for book in event["books"]:
+                for field in book["fields"]:
+                    assert field["field"] == "price_incl_tax"
     
     async def test_changes_pagination(self):
         """Test changes pagination"""

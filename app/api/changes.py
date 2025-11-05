@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/changes", tags=["changes"])
 
 
-@router.get("", response_model=ChangesListResponse)
+@router.get("")
 async def get_changes(
     api_key: APIKey,
     book_id: Optional[str] = Query(None, description="Filter by specific book ID"),
@@ -72,145 +72,81 @@ async def get_changes(
         skip = (page - 1) * limit
         total_pages = math.ceil(total / limit) if total > 0 else 1
         
-        # Execute query with pagination (sorted by most recent first)
-        changes = await ChangeLog.find(query_filter).sort('-changed_at').skip(skip).limit(limit).to_list()
+        # Get ALL changes matching filter (we'll group then paginate)
+        all_changes = await ChangeLog.find(query_filter).sort('-changed_at').to_list()
         
-        # Convert to response model
-        change_responses = [
-            ChangeResponse(
-                id=str(change.id),
-                book_id=change.book_id,
-                book_name=change.book_name,
-                change_type=change.change_type,
-                field_changed=change.field_changed,
-                old_value=change.old_value,
-                new_value=change.new_value,
-                changed_at=change.changed_at
-            )
-            for change in changes
-        ]
+        # Group changes by timestamp and book
+        from collections import defaultdict
         
-        logger.info(f"Returned {len(change_responses)} changes (page {page}/{total_pages})")
+        # First group by timestamp (to second precision)
+        events_by_time = defaultdict(list)
+        for change in all_changes:
+            timestamp_key = change.changed_at.replace(microsecond=0).isoformat()
+            events_by_time[timestamp_key].append(change)
         
-        return ChangesListResponse(
-            total=total,
-            page=page,
-            limit=limit,
-            pages=total_pages,
-            changes=change_responses
-        )
+        # Build grouped events
+        grouped_events = []
+        for timestamp, changes_at_time in sorted(events_by_time.items(), reverse=True):
+            # Group by book within this timestamp
+            books_affected = defaultdict(list)
+            for change in changes_at_time:
+                books_affected[change.book_id].append(change)
+            
+            # Build book entries
+            book_entries = []
+            for book_id, book_changes in books_affected.items():
+                change_type = book_changes[0].change_type
+                book_name = book_changes[0].book_name
+                
+                # Build field changes
+                field_changes = []
+                for change in book_changes:
+                    if change.change_type != 'new_book':
+                        field_changes.append({
+                            "field": change.field_changed,
+                            "old_value": change.old_value,
+                            "new_value": change.new_value,
+                            "description": change.description
+                        })
+                
+                book_entries.append({
+                    "book_id": book_id,
+                    "book_name": book_name,
+                    "change_type": change_type,
+                    "total_fields_changed": len(field_changes),
+                    "fields": field_changes,
+                    "summary": ", ".join([f["field"] for f in field_changes]) if field_changes else "New book added"
+                })
+            
+            grouped_events.append({
+                "changed_at": timestamp,
+                "total_books_affected": len(book_entries),
+                "total_fields_changed": sum(len(b["fields"]) for b in book_entries),
+                "books": book_entries
+            })
+        
+        # Apply pagination to grouped events
+        total_events = len(grouped_events)
+        total_pages = math.ceil(total_events / limit) if total_events > 0 else 1
+        
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_events = grouped_events[start_idx:end_idx]
+        
+        logger.info(f"Returned {total} total changes ({total_events} events, page {page}/{total_pages})")
+        
+        return {
+            "total_changes": total,
+            "total_events": total_events,
+            "page": page,
+            "limit": limit,
+            "pages": total_pages,
+            "events": paginated_events
+        }
         
     except Exception as e:
         logger.error(f"Error fetching changes: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch changes"
-        )
-
-
-@router.get("/books/{book_id}/history")
-async def get_book_history(
-    book_id: str = Path(..., description="Book ID"),
-    api_key: APIKey = None,
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(50, ge=1, le=200, description="Events per page (max 200)")
-):
-    """
-    Get complete change history for a specific book (grouped by event)
-    
-    **Path Parameters:**
-    - `book_id`: The unique identifier of the book
-    
-    **Query Parameters:**
-    - `page`: Page number (starts at 1)
-    - `limit`: Number of events per page (1-200, default: 50)
-    
-    **Returns:**
-    - Change history grouped by event (same timestamp = same event)
-    - Each event shows all fields that changed together
-    - Sorted by most recent first
-    
-    **Errors:**
-    - 404: Book not found
-    """
-    try:
-        # Check if book exists
-        book = await Book.get(book_id)
-        if not book:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Book with ID '{book_id}' not found"
-            )
-        
-        # Get all changes for this book
-        changes = await ChangeLog.find(
-            ChangeLog.book_id == book_id
-        ).sort('-changed_at').to_list()
-        
-        # Group changes by timestamp (same crawl = same second)
-        from collections import defaultdict
-        grouped_changes = defaultdict(list)
-        
-        for change in changes:
-            # Round to second for grouping (changes in same crawl)
-            timestamp_key = change.changed_at.replace(microsecond=0).isoformat()
-            grouped_changes[timestamp_key].append(change)
-        
-        # Build grouped response
-        grouped_response = []
-        for timestamp, change_group in sorted(grouped_changes.items(), reverse=True):
-            # Build field changes for this timestamp
-            field_changes = []
-            change_type = change_group[0].change_type
-            
-            for change in change_group:
-                if change.change_type == 'new_book':
-                    # New book entry (no field changes)
-                    pass
-                else:
-                    field_changes.append({
-                        "field": change.field_changed,
-                        "old_value": change.old_value,
-                        "new_value": change.new_value,
-                        "description": change.description
-                    })
-            
-            grouped_entry = {
-                "changed_at": timestamp,
-                "change_type": change_type,
-                "total_fields_changed": len(field_changes),
-                "fields": field_changes,
-                "summary": ", ".join([f["field"] for f in field_changes]) if field_changes else "New book added"
-            }
-            grouped_response.append(grouped_entry)
-        
-        # Apply pagination to grouped events
-        total_events = len(grouped_response)
-        total_pages = (total_events + limit - 1) // limit
-        
-        # Calculate pagination
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_events = grouped_response[start_idx:end_idx]
-        
-        logger.info(f"Returned {len(changes)} total changes ({total_events} events, page {page}/{total_pages}) for book: {book.name}")
-        
-        return {
-            "book_id": book_id,
-            "book_name": book.name,
-            "total_changes": len(changes),
-            "total_events": total_events,
-            "page": page,
-            "limit": limit,
-            "pages": total_pages,
-            "changes": paginated_events
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching book history for {book_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch book history"
         )
