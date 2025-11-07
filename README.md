@@ -366,4 +366,3 @@ curl http://localhost:8000/health
 # View all endpoints
 open http://localhost:8000/docs
 ```
-

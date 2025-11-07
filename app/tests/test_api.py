@@ -316,3 +316,28 @@ class TestRateLimitingAsync:
         assert "x-ratelimit-remaining" in response.headers
         assert "x-ratelimit-reset" in response.headers
         assert int(response.headers["x-ratelimit-limit"]) == 100
+    
+    async def test_rate_limit_enforcement(self):
+        """Test that rate limit actually blocks requests after limit exceeded"""
+        # Use a unique API key for this test to avoid interference
+        test_api_key = "dev-key-001"
+        
+        async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+            # Make 100 requests (the limit)
+            for i in range(100):
+                response = await client.get(
+                    "/books?limit=1",
+                    headers={"X-API-Key": test_api_key}
+                )
+                assert response.status_code == 200
+            
+            # The 101st request should be rate limited
+            response = await client.get(
+                "/books?limit=1",
+                headers={"X-API-Key": test_api_key}
+            )
+            
+            assert response.status_code == 429
+            assert "retry-after" in response.headers
+            data = response.json()
+            assert "rate limit exceeded" in data["detail"].lower()
