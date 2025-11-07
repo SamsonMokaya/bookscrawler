@@ -24,7 +24,7 @@ async def get_books(
     rating: Optional[int] = Query(None, ge=1, le=5, description="Filter by rating (1-5)"),
     availability: Optional[str] = Query(None, description="Filter by availability status"),
     search: Optional[str] = Query(None, description="Search in book name/description"),
-    sort_by: Optional[str] = Query("name", description="Sort field (price_incl_tax, rating, name, crawled_at)"),
+    sort_by: Optional[str] = Query("name", description="Sort field (price_incl_tax, rating, num_reviews, name, crawled_at)"),
     order: Optional[str] = Query("asc", description="Sort order (asc, desc)"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Results per page (max 100)")
@@ -41,7 +41,7 @@ async def get_books(
     - `search`: Search in book name and description
     
     **Sorting:**
-    - `sort_by`: Field to sort by (price_incl_tax, rating, name, crawled_at)
+    - `sort_by`: Field to sort by (price_incl_tax, rating, num_reviews, name, crawled_at)
     - `order`: Sort order (asc or desc)
     
     **Pagination:**
@@ -87,7 +87,7 @@ async def get_books(
         sort_order = 1 if order == "asc" else -1
         
         # Validate sort_by field
-        valid_sort_fields = ['name', 'price_incl_tax', 'rating', 'crawled_at', 'updated_at', 'category']
+        valid_sort_fields = ['name', 'price_incl_tax', 'rating', 'num_reviews', 'crawled_at', 'updated_at', 'category']
         if sort_by not in valid_sort_fields:
             sort_by = 'name'
         
