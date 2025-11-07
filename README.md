@@ -1,17 +1,6 @@
-# Book Scraper - Production Web Crawling Solution
+# Book Scraper
 
-A scalable, fault-tolerant web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book information from `https://books.toscrape.com` with automated change detection and RESTful API access.
-
----
-
-## Features
-
-- **Async Web Crawler**: High-performance scraping with retry logic (50 pages, 1000 books)
-- **Change Detection**: Automatic tracking of price, availability, rating, category, and review changes
-- **RESTful API**: Comprehensive endpoints with filtering, pagination, and sorting
-- **Scheduled Crawls**: Daily automated crawls using Celery Beat
-- **API Security**: API key authentication and rate limiting (100 requests/hour)
-- **Test Coverage**: 49 tests, all passing, with database isolation
+A web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book information from `https://books.toscrape.com` with automated change detection and RESTful API access.
 
 ---
 
@@ -19,20 +8,23 @@ A scalable, fault-tolerant web crawling system built with FastAPI, Celery, and M
 
 ### Prerequisites
 
-- Docker & Docker Compose
+- Docker
 - Python 3.11+ (for local development)
 
 ### Setup (3 Steps)
 
 ```bash
-# 1. Navigate to project
-cd /Users/nomad/PythonProjects/bookscrawler
+# 1. Clone the repository
+git clone https://github.com/nomad-ai/bookscrawler.git
 
-# 2. Create .env file
+# 2. Navigate to project
+cd .../bookscrawler
+
+# 3. Create .env file
 cp env.template .env
 
-# 3. Start all services
-docker-compose up -d
+# 4. Start all services
+docker-compose up --build
 ```
 
 **Done!** Services running:
@@ -328,16 +320,6 @@ docker-compose restart backend
 
 ---
 
-## Performance
-
-- **Crawl Speed**: 20 books in ~5 seconds
-- **Full Site**: 1000 books in ~5 minutes
-- **Success Rate**: 100% with retry logic
-- **API Response**: <100ms for most queries
-- **Concurrent Requests**: 5 simultaneous
-
----
-
 ## Architecture
 
 ```
@@ -385,6 +367,3 @@ curl http://localhost:8000/health
 open http://localhost:8000/docs
 ```
 
----
-
-Built as a production-ready web scraping solution demonstrating scalable architecture, fault tolerance, and modern Python async patterns.

@@ -84,14 +84,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
     
-    # Email Alerts (Optional)
-    ENABLE_EMAIL_ALERTS: bool = False
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = "your-email@gmail.com"
-    SMTP_PASSWORD: str = "your-app-password"
-    ALERT_EMAIL: str = "admin@example.com"
-    
     class Config:
         env_file = ".env"
         case_sensitive = True
