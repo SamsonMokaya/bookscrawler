@@ -329,7 +329,11 @@ Application logs are written to `logs/app.log` (FastAPI + Celery + all tasks).
 
 You can manually trigger crawls using Celery tasks. Tasks are queued and executed by Celery workers.
 
-**Important:** Only one crawl can run at a time (Redis distributed lock). If a crawl is already running, new tasks will be **skipped** until the current crawl completes.
+**Important:** Only one crawl can run at a time (Redis distributed lock). 
+If a crawl is already running when a new crawl is triggered:
+- The new crawl is **skipped** (not queued or retried)
+- The running crawl continues unaffected
+- You'll see "skipped" status in logs and Flower dashboard
 
 ### Trigger Full Crawl (1000 books)
 
