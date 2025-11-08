@@ -9,7 +9,8 @@ A web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book info
 ### Prerequisites
 
 - Docker
-- Python 3.11+ (for local development)
+
+**Note:** Python 3.11 runtime is included in Docker containers.
 
 ### Setup (7 Steps)
 
@@ -335,12 +336,12 @@ You can manually trigger crawls using Celery tasks. Tasks are queued and execute
 ```bash
 docker exec bookscrawler_backend python -c "
 from app.scheduler.crawl_tasks import crawl_all_books_task
-result = crawl_all_books_task.delay(start_page=1, end_page=50)
+result = crawl_all_books_task.delay(start_page=1, end_page=None)
 print(f'Task ID: {result.id}')
 "
 ```
 
-This **queues** a crawl task to crawl all books from page 1 to 50.
+This **queues** a crawl task to crawl all books from page 1 to the last page.
 
 ### Crawl Specific Pages
 

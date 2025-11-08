@@ -13,7 +13,7 @@ from app.models import Book, ChangeLog
 from app.database.mongo import init_db, get_db_client
 from app.utils.change_detection import detect_changes, save_changes_to_log
 from app.utils.rate_limit import get_redis_client
-from app.utils.email import send_new_books_alert, send_book_changes_alert
+from app.utils.email import send_new_books_alert, send_book_changes_alert, send_crawl_error_alert
 from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
     summary = {
         'total_scraped': 0,
         'inserted': 0,
-        'updated': 0,
+        're_crawled': 0,
         'failed': 0,
         'duplicates': 0,
         'total_changes_detected': 0,
@@ -167,7 +167,7 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
                         new_books_for_email.append(result['book_data'])
                         
                 elif result['status'] == 'updated':
-                    summary['updated'] += 1
+                    summary['re_crawled'] += 1
                     summary['total_changes_detected'] += result.get('changes_detected', 0)
                     summary['total_changes_logged'] += result.get('changes_saved', 0)
                     # Collect changes for email
@@ -204,6 +204,20 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
         logger.error(f"Error in crawl task: {e}", exc_info=True)
         summary['error'] = str(e)
         summary['end_time'] = datetime.utcnow().isoformat()
+        
+        # Send error alert email (fail-safe)
+        try:
+            send_crawl_error_alert(
+                error_message=str(e),
+                details={
+                    'start_page': start_page,
+                    'end_page': end_page or 'all',
+                    'time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+                }
+            )
+        except Exception as email_error:
+            logger.error(f"Failed to send error alert email: {email_error}")
+        
         return summary
 
 
@@ -258,6 +272,20 @@ def crawl_all_books_task(self, start_page: int = 1, end_page: int = None):
         
     except Exception as e:
         logger.error(f"Error in crawl task: {e}", exc_info=True)
+        
+        # Send error alert email (fail-safe)
+        try:
+            send_crawl_error_alert(
+                error_message=f"Crawl task failed: {str(e)}",
+                details={
+                    'start_page': start_page,
+                    'end_page': end_page or 'all',
+                    'time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+                }
+            )
+        except Exception as email_error:
+            logger.error(f"Failed to send error alert email: {email_error}")
+        
         raise
     finally:
         # Always release lock

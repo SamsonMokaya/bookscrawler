@@ -348,7 +348,7 @@ def send_daily_summary(summary: Dict) -> bool:
     body += f"Statistics:\n"
     body += f"  Total Scraped: {summary.get('total_scraped', 0)}\n"
     body += f"  New Books: {summary.get('inserted', 0)}\n"
-    body += f"  Updated Books: {summary.get('updated', 0)}\n"
+    body += f"  Re-crawled: {summary.get('re_crawled', 0)}\n"
     body += f"  Changes Detected: {summary.get('total_changes_detected', 0)}\n"
     body += f"  Failed: {summary.get('failed', 0)}\n"
     body += f"  Duration: {summary.get('duration_seconds', 0):.2f} seconds\n\n"
@@ -378,8 +378,8 @@ def send_daily_summary(summary: Dict) -> bool:
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #059669;">{summary.get('inserted', 0)}</td>
             </tr>
             <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Updated Books:</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">{summary.get('updated', 0)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Re-crawled:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">{summary.get('re_crawled', 0)}</td>
             </tr>
             <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Changes Detected:</strong></td>

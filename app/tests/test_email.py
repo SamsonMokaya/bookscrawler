@@ -217,7 +217,7 @@ class TestDailySummary:
         summary = {
             'total_scraped': 1000,
             'inserted': 5,
-            'updated': 100,
+            're_crawled': 100,
             'failed': 2,
             'total_changes_detected': 150,
             'duration_seconds': 180.5
@@ -232,7 +232,7 @@ class TestDailySummary:
         # Verify key stats appear in body
         assert "1000" in body  # total_scraped
         assert "5" in body     # inserted
-        assert "100" in body   # updated
+        assert "100" in body   # re_crawled
         assert "180.5" in body or "180.50" in body  # duration
 
 
