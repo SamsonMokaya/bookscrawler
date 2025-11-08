@@ -82,10 +82,11 @@ bookscrawler/
 │   ├── utils/            # Helpers (auth, rate_limit, change_detection, email)
 │   └── tests/            # Test suite (62 tests)
 ├── screenshots/          # Demo screenshots
-├── docker-compose.yml    # Docker services
-├── mongo-init.sh         # MongoDB replica set setup
-├── requirements.txt      # Python dependencies
-└── .env                  # Environment configuration
+├── docker-compose.yml    # Docker services configuration
+├── Dockerfile            # Container image definition
+├── mongo-init.sh         # MongoDB replica set initialization
+├── env.template          # Environment variables template
+└── requirements.txt      # Python dependencies
 ```
 
 ---
