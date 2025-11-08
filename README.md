@@ -73,14 +73,15 @@ Expected:
 ```
 bookscrawler/
 ├── app/
-│   ├── api/              # API endpoints (books, changes)
+│   ├── api/              # API endpoints (books, changes, reports)
 │   ├── crawler/          # Web scraping (parser, scraper)
 │   ├── scheduler/        # Celery tasks
 │   ├── models/           # Database models (Book, ChangeLog)
 │   ├── database/         # MongoDB connection
-│   ├── utils/            # Helpers (auth, rate_limit, change_detection)
-│   └── tests/            # Test suite (49 tests)
+│   ├── utils/            # Helpers (auth, rate_limit, change_detection, email)
+│   └── tests/            # Test suite (62 tests)
 ├── docker-compose.yml    # Docker services
+├── mongo-init.sh         # MongoDB replica set setup
 ├── requirements.txt      # Python dependencies
 └── .env                  # Environment configuration
 ```
@@ -301,7 +302,7 @@ docker-compose up -d
 docker-compose exec backend pytest app/tests/ -v
 ```
 
-**Expected:** 49 tests pass in ~X seconds
+**Expected:** 62 tests pass in approximately ~23 seconds
 
 Tests use separate databases:
 
