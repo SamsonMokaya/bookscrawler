@@ -27,6 +27,7 @@ async def init_db():
         
         # Create Motor client
         _mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
+        logger.info(f"MongoDB client created for database: {settings.mongodb_database_name}")
         
         # Get database (uses test DB if TESTING=true)
         database = _mongodb_client[settings.mongodb_database_name]
@@ -36,9 +37,11 @@ async def init_db():
             database=database,
             document_models=[Book, ChangeLog]
         )
+        logger.info("Beanie ODM initialized with models: Book, ChangeLog")
         
         # Test connection
         await database.command("ping")
+        logger.info("MongoDB connection verified successfully")
         
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
@@ -56,6 +59,7 @@ async def close_db():
     if _mongodb_client:
         try:
             _mongodb_client.close()
+            logger.info("MongoDB connection closed successfully")
         except Exception as e:
             logger.error(f"Error closing MongoDB connection: {e}")
             raise

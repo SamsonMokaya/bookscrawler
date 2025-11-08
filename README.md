@@ -101,6 +101,39 @@ All dependencies are in `requirements.txt`.
 
 ---
 
+## Automated Scheduler
+
+Based on the default `.env` configuration, the scheduler operates as follows:
+
+| Setting             | Value                                             |
+| ------------------- | ------------------------------------------------- |
+| **Frequency**       | **Daily**                                         |
+| **Time**            | **2:00 AM UTC**                                   |
+| **Task**            | `crawl_all_books`                                 |
+| **Pages**           | All (1 to end)                                    |
+| **Purpose**         | Detect new books + changes, log everything        |
+| **Lock Timeout**    | 6 hours max                                       |
+| **Task Expiration** | 12 hours (task won't start if scheduled >12h ago) |
+
+### How It Works
+
+- **New Books:** Detected and logged in the ChangeLog collection
+- **Changed Books:** Tracked fields (price, availability, reviews, rating, category) are compared and changes logged
+- **Concurrent Crawls:** Prevented via Redis distributed lock
+- **Data Consistency:** MongoDB transactions ensure atomic saves (book + changelog together)
+
+### Note on Resuming from Failed Crawls
+
+The scheduler does **not** resume from the last successful crawl position. Since we crawl the entire site daily to get fresh data, resuming from a partial crawl would be redundant. Instead, the system implements:
+
+- **Retry logic** with exponential backoff for transient errors (network issues, timeouts, 5xx errors)
+- **Redis locking** to prevent overlapping crawls
+- **Comprehensive error logging** to identify and address persistent failures
+
+If a crawl fails completely, the next scheduled run (2 AM the following day) will perform a fresh, full crawl.
+
+---
+
 ## API Documentation
 
 **Interactive Swagger Docs:** http://localhost:8000/docs

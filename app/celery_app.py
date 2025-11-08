@@ -1,6 +1,9 @@
 from celery import Celery
 from celery.schedules import crontab
 from app.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create Celery instance
 celery_app = Celery(
@@ -19,6 +22,8 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
+logger.info(f"Celery configured with broker: {settings.CELERY_BROKER_URL}")
+
 # Configure Celery Beat schedule
 celery_app.conf.beat_schedule = {}
 
@@ -33,6 +38,7 @@ if settings.ENABLE_SCHEDULER:
         'args': (1, None),  # Crawl all pages (1 to end)
         'options': {'expires': 3600 * 12}  # Task expires after 12 hours
     }
+    logger.info(f"Scheduler enabled: Daily crawl at {settings.CRAWL_SCHEDULE_HOUR:02d}:{settings.CRAWL_SCHEDULE_MINUTE:02d} UTC")
     
 # Optional: Add test task for development/debugging
 # Uncomment to enable:
