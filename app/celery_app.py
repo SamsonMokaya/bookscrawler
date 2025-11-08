@@ -1,9 +1,51 @@
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import after_setup_logger, after_setup_task_logger
 from app.config import settings
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+@after_setup_logger.connect
+def setup_loggers(logger, *args, **kwargs):
+    """Configure Celery logger to write to app.log (production only)"""
+    # Skip file logging during tests
+    if settings.TESTING:
+        return
+    
+    # Ensure logs directory exists
+    log_dir = Path(settings.LOG_FILE).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Add file handler
+    file_handler = logging.FileHandler(settings.LOG_FILE)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(
+        logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    )
+    logger.addHandler(file_handler)
+
+
+@after_setup_task_logger.connect
+def setup_task_logger(logger, *args, **kwargs):
+    """Configure task logger to write to app.log (production only)"""
+    # Skip file logging during tests
+    if settings.TESTING:
+        return
+    
+    # Ensure logs directory exists
+    log_dir = Path(settings.LOG_FILE).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Add file handler
+    file_handler = logging.FileHandler(settings.LOG_FILE)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(
+        logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    )
+    logger.addHandler(file_handler)
 
 # Create Celery instance
 celery_app = Celery(
@@ -20,6 +62,7 @@ celery_app.conf.update(
     result_expires=3600,  # Results expire after 1 hour
     timezone='UTC',
     enable_utc=True,
+    broker_connection_retry_on_startup=True,  # Explicit retry on startup (Celery 6.0+ compatibility)
 )
 
 logger.info(f"Celery configured with broker: {settings.CELERY_BROKER_URL}")

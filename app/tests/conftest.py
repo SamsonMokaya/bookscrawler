@@ -8,14 +8,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from redis import Redis
 import httpx
 
+# Set testing mode FIRST - before any other app imports
 from app.config import settings
+settings.TESTING = True
+
 from app.database.mongo import init_db, close_db
 from app.models import Book, ChangeLog
 from app.main import app
-
-
-# Set testing mode BEFORE any imports that use Redis/MongoDB
-settings.TESTING = True
 
 
 @pytest.fixture(scope="session")

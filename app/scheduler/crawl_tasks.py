@@ -13,6 +13,7 @@ from app.models import Book, ChangeLog
 from app.database.mongo import init_db, get_db_client
 from app.utils.change_detection import detect_changes, save_changes_to_log
 from app.utils.rate_limit import get_redis_client
+from app.utils.email import send_new_books_alert, send_book_changes_alert
 from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
@@ -68,15 +69,15 @@ async def save_book_to_db(book_data: Dict) -> Dict[str, any]:
                             new_val = change.get('new_value')
                             change_summary.append(f"{field}: {old_val} -> {new_val}")
                         
-                        logger.warning(f"CHANGE DETECTED: '{book_data['name']}' - {', '.join(change_summary)}")
-                        logger.info(f"Updated book: {book_data['name']} with {changes_saved} changes logged")
+                        logger.info(f"CHANGE DETECTED and updated: '{book_data['name']}' - {', '.join(change_summary)} ({changes_saved} changes logged)")
                    
                     # Transaction commits automatically here
                     return {
                         'status': 'updated',
                         'book_id': str(existing_book.id),
                         'changes_detected': len(changes),
-                        'changes_saved': changes_saved
+                        'changes_saved': changes_saved,
+                        'change_details': changes  # Return actual change data for email
                     }
                 else:
                     # Create new book
@@ -94,13 +95,13 @@ async def save_book_to_db(book_data: Dict) -> Dict[str, any]:
                     await new_book_log.insert(session=session)
                     
                     # Enhanced logging for new books
-                    logger.warning(f"NEW BOOK DETECTED: '{book_data['name']}' in category '{book_data['category']}' - £{book_data['price_incl_tax']}")
-                    logger.info(f"Inserted new book: {book_data['name']}")
+                    logger.info(f"NEW BOOK DETECTED and inserted: '{book_data['name']}' in category '{book_data['category']}' - £{book_data['price_incl_tax']}")
                     
                     # Transaction commits automatically here
                     return {
                         'status': 'inserted',
                         'book_id': str(book.id),
+                        'book_data': book_data,  # Return book data for email
                         'changes_detected': 0,
                         'changes_saved': 1
                     }
@@ -150,6 +151,10 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
             
             logger.info(f"Scraped {len(books)} books, saving to database...")
             
+            # Collect new books and changes for email notifications
+            new_books_for_email = []
+            all_changes_for_email = []
+            
             # Save books to database
             for book_data in books:
                 result = await save_book_to_db(book_data)
@@ -157,10 +162,18 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
                 if result['status'] == 'inserted':
                     summary['inserted'] += 1
                     summary['total_changes_logged'] += result.get('changes_saved', 0)
+                    # Collect new book for email
+                    if result.get('book_data'):
+                        new_books_for_email.append(result['book_data'])
+                        
                 elif result['status'] == 'updated':
                     summary['updated'] += 1
                     summary['total_changes_detected'] += result.get('changes_detected', 0)
                     summary['total_changes_logged'] += result.get('changes_saved', 0)
+                    # Collect changes for email
+                    if result.get('change_details'):
+                        all_changes_for_email.extend(result['change_details'])
+                        
                 elif result['status'] == 'duplicate':
                     summary['duplicates'] += 1
                 else:
@@ -171,6 +184,20 @@ async def async_crawl_all_books(start_page: int = 1, end_page: int = None) -> Di
             summary['duration_seconds'] = (end_time - start_time).total_seconds()
             
             logger.info(f"Crawl completed: {summary}")
+            
+            # Send email notifications (fail-safe - won't crash if email fails)
+            try:
+                if new_books_for_email:
+                    logger.info(f"Sending new books email notification ({len(new_books_for_email)} books)")
+                    send_new_books_alert(new_books_for_email)
+                
+                if all_changes_for_email:
+                    logger.info(f"Sending book changes email notification ({len(all_changes_for_email)} changes)")
+                    send_book_changes_alert(all_changes_for_email)
+            except Exception as e:
+                logger.error(f"Error sending email notifications: {e}", exc_info=True)
+                # Don't fail the crawl if email fails
+            
             return summary
             
     except Exception as e:

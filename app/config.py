@@ -84,6 +84,23 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
     
+    # Email Notification Settings
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USE_TLS: bool = True
+    SMTP_USER_EMAIL: str = ""
+    SMTP_PASSWORD: str = ""
+    NOTIFICATION_EMAIL: str = ""
+    
+    @property
+    def email_enabled(self) -> bool:
+        """Check if email notifications are properly configured"""
+        return bool(
+            self.SMTP_USER_EMAIL and 
+            self.SMTP_PASSWORD and 
+            self.NOTIFICATION_EMAIL
+        )
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

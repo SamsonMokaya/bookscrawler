@@ -58,3 +58,6 @@ htmlcov/
 *.db
 *.sqlite3
 
+# MongoDB
+mongo-keyfile
+

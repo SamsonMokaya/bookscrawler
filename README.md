@@ -11,7 +11,7 @@ A web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book info
 - Docker
 - Python 3.11+ (for local development)
 
-### Setup (3 Steps)
+### Setup (7 Steps)
 
 ```bash
 # 1. Clone the repository
@@ -23,9 +23,24 @@ cd .../bookscrawler
 # 3. Create .env file
 cp env.template .env
 
-# 4. Start all services
-docker-compose up --build
+# 4. Configure email settings (edit .env file)
+# Required: Fill in these fields manually:
+#   - SMTP_USER_EMAIL (your Gmail address)
+#   - SMTP_PASSWORD (Gmail App Password)
+#   - NOTIFICATION_EMAIL (where to receive alerts)
+
+# 5. Generate MongoDB keyfile (required for replica set)
+openssl rand -base64 756 > mongo-keyfile && chmod 400 mongo-keyfile
+
+# 6. Start all services
+docker-compose up -d
+
+# 7. Initialize MongoDB replica set (one-time setup)
+chmod +x mongo-init.sh  # Make script executable
+./mongo-init.sh
 ```
+
+**Note:** MongoDB replica set is required for transaction support (ensures atomic book + changelog saves).
 
 **Done!** Services running:
 
@@ -295,7 +310,24 @@ Tests use separate databases:
 
 ---
 
+## Logging
+
+Application logs are written to `logs/app.log` (FastAPI + Celery + all tasks).
+
+**Note:** Test execution does not write to `logs/app.log`.
+
+**Production Note:** For production deployment, I would implement log rotation to prevent disk space issues:
+
+- Python: `RotatingFileHandler` (max 10MB per file, keep 5 backups)
+- Docker: Logging config in `docker-compose.yml` (`max-size: "10m"`, `max-file: "3"`)
+
+---
+
 ## Manual Crawling
+
+You can manually trigger crawls using Celery tasks. Tasks are queued and executed by Celery workers.
+
+**Important:** Only one crawl can run at a time (Redis distributed lock). If a crawl is already running, new tasks will be **skipped** until the current crawl completes.
 
 ### Trigger Full Crawl (1000 books)
 
@@ -307,6 +339,8 @@ print(f'Task ID: {result.id}')
 "
 ```
 
+This **queues** a crawl task to crawl all books from page 1 to 50.
+
 ### Crawl Specific Pages
 
 ```bash
@@ -316,6 +350,8 @@ result = crawl_page_range_task.delay(start_page=1, end_page=5)
 print(f'Task ID: {result.id}')
 "
 ```
+
+This **queues** a task to crawl pages 1-5 only.
 
 ### Monitor Tasks
 

@@ -2,11 +2,20 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: bookscrawler_mongodb
+    command:
+      [
+        "--replSet",
+        "rs0",
+        "--bind_ip_all",
+        "--keyFile",
+        "/data/mongodb-keyfile",
+      ]
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
+      - ./mongo-keyfile:/data/mongodb-keyfile:ro
     env_file:
       - .env
     environment:
@@ -14,6 +23,12 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-admin123}
       - MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-bookscrawler}
     restart: unless-stopped
+    healthcheck:
+      test: mongosh --eval 'db.runCommand("ping").ok' --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
@@ -44,10 +59,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
+      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin&replicaSet=rs0
     depends_on:
-      - redis
-      - mongodb
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
     restart: unless-stopped
 
   celery_worker:
@@ -64,10 +81,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
+      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin&replicaSet=rs0
     depends_on:
-      - redis
-      - mongodb
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
     restart: unless-stopped
 
   celery_beat:
@@ -84,10 +103,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin
+      - MONGODB_URL=mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DB_NAME:-bookscrawler}?authSource=admin&replicaSet=rs0
     depends_on:
-      - redis
-      - mongodb
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
     restart: unless-stopped
 
   flower:

@@ -16,16 +16,17 @@ from pathlib import Path
 log_dir = Path(settings.LOG_FILE).parent
 log_dir.mkdir(parents=True, exist_ok=True)
 
-# Configure logging
+# Configure logging handlers based on environment
+handlers = [logging.StreamHandler()]  # Always log to console
+
+# Only log to file in production (not during tests)
+if not settings.TESTING:
+    handlers.append(logging.FileHandler(settings.LOG_FILE))
+
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        # File handler (persistent logs)
-        logging.FileHandler(settings.LOG_FILE),
-        # Console handler (Docker logs)
-        logging.StreamHandler()
-    ]
+    handlers=handlers
 )
 logger = logging.getLogger(__name__)
 
