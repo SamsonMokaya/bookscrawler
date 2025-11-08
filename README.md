@@ -81,6 +81,7 @@ bookscrawler/
 │   ├── database/         # MongoDB connection
 │   ├── utils/            # Helpers (auth, rate_limit, change_detection, email)
 │   └── tests/            # Test suite (62 tests)
+├── screenshots/          # Demo screenshots
 ├── docker-compose.yml    # Docker services
 ├── mongo-init.sh         # MongoDB replica set setup
 ├── requirements.txt      # Python dependencies
@@ -329,8 +330,9 @@ Application logs are written to `logs/app.log` (FastAPI + Celery + all tasks).
 
 You can manually trigger crawls using Celery tasks. Tasks are queued and executed by Celery workers.
 
-**Important:** Only one crawl can run at a time (Redis distributed lock). 
+**Important:** Only one crawl can run at a time (Redis distributed lock).
 If a crawl is already running when a new crawl is triggered:
+
 - The new crawl is **skipped** (not queued or retried)
 - The running crawl continues unaffected
 - You'll see "skipped" status in logs and Flower dashboard
@@ -441,3 +443,42 @@ curl http://localhost:8000/health
 # View all endpoints
 open http://localhost:8000/docs
 ```
+
+---
+
+## Screenshots
+
+### MongoDB Compass
+
+Shows the books collection with all the scraped book data and the changelogs collection detailing the changes found for all books.
+
+### Successful Crawls
+
+Multiple tasks completed successfully with accurate book counts.
+
+### Skipped Task
+
+Shows the Redis lock mechanism preventing concurrent crawls (task skipped when another crawl is running).
+
+### Re-crawled Books
+
+Demonstrates existing books being checked for changes without creating duplicate database entries.
+
+### Full Site Crawl
+
+Crawl with `end_page=None`, where the system automatically detects the website's total pages (50) and crawls all 1000 books.
+
+### Email Notifications
+
+Automated alerts for new book detections, with functionality for change updates as well if there would have been any.
+
+### Understanding the Results
+
+Each crawl task returns the following metrics:
+
+- **total_scraped**: Books fetched from the website
+- **inserted**: New books added to the database
+- **re_crawled**: Books that already existed (so they are checked for changes)
+- **total_changes_detected**: Actual field changes found (price, availability, rating, etc.)
+- **failed**: Books that failed to save (should be 0)
+- **duplicates**: Race condition indicator (should always be 0 with proper locking)
