@@ -19,7 +19,7 @@ A web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book info
 git clone https://github.com/nomad-ai/bookscrawler.git
 
 # 2. Navigate to project
-cd .../bookscrawler
+cd bookscrawler
 
 # 3. Create .env file
 cp env.template .env
