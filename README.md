@@ -16,7 +16,7 @@ A web crawling system built with FastAPI, Celery, and MongoDB. Scrapes book info
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/nomad-ai/bookscrawler.git
+git clone https://github.com/SamsonMokaya/bookscrawler
 
 # 2. Navigate to project
 cd bookscrawler
