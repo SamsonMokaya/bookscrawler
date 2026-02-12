@@ -448,6 +448,7 @@ open http://localhost:8000/docs
 ---
 
 ## Screenshots
+Please check the /screenshots folder
 
 ### MongoDB Compass
 
